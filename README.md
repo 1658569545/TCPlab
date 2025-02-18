@@ -1,4 +1,4 @@
-master 分支存放lab0开始代码
+# master 分支存放lab0开始代码
 
 For build prereqs, see [the CS144 VM setup instructions](https://web.stanford.edu/class/cs144/vm_howto).
 
