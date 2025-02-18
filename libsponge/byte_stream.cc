@@ -30,7 +30,10 @@ string ByteStream::peek_output(const size_t len) const {
 }
 
 //! \param[in] len bytes will be removed from the output side of the buffer
-void ByteStream::pop_output(const size_t len) { DUMMY_CODE(len); }
+void ByteStream::pop_output(const size_t len) { 
+    DUMMY_CODE(len); 
+}
+
 
 void ByteStream::end_input() {}
 
