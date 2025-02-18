@@ -1,5 +1,6 @@
 # master 分支存放lab0开始代码
-
+# lab n分支存放lab n开始代码
+# solution 存放解决办法
 For build prereqs, see [the CS144 VM setup instructions](https://web.stanford.edu/class/cs144/vm_howto).
 
 ## Sponge quickstart
