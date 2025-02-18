@@ -8,82 +8,110 @@
 #include <string>
 #include <utility>
 
-//! \brief An in-order byte stream.
+// 实现一个可靠的字符串流
 
-//! Bytes are written on the "input" side and read from the "output"
-//! side.  The byte stream is finite: the writer can end the input,
-//! and then no more bytes can be written.
 class ByteStream {
   private:
-    // Your code here -- add private members as necessary.
-
-    bool _error{};  //!< Flag indicating that the stream suffered an error.
+    // 缓冲区容积
+    size_t _capacity=0;
+    // 已经读了的数据数目
+    size_t _read_count=0;
+    // 已经写了的数据数目
+    size_t _write_count=0;
+    // 缓冲区
+    std::deque<char>_buffer={};
+    // 是否已经到达末尾
+    bool _input_ended_flag = false;
+    // 指示流发生错误的标志。
+    bool _error=false; 
 
   public:
-    //! Construct a stream with room for `capacity` bytes.
+    /**
+     * @breif 构造函数
+     * @param[in] capacity 缓冲区容积
+     */
     ByteStream(const size_t capacity);
 
-    //! \name "Input" interface for the writer
-    //!@{
-
-    //! Write a string of bytes into the stream. Write as many
-    //! as will fit, and return how many were written.
-    //! \returns the number of bytes accepted into the stream
+    /**
+     * @brief 读取数据
+     * @param[in] data 数据
+     * @return 返回成功读取数据的长度
+     */
     size_t write(const std::string &data);
 
-    //! \returns the number of additional bytes that the stream has space for
+    /**
+     * @return 流有空间容纳的额外字节数
+     */
     size_t remaining_capacity() const;
 
-    //! Signal that the byte stream has reached its ending
+    /**
+     * @brief 字节流到达其结束的信号
+     */
     void end_input();
 
-    //! Indicate that the stream suffered an error.
+    /**
+     * @brief 设置错误标志
+     */
     void set_error() { _error = true; }
-    //!@}
 
-    //! \name "Output" interface for the reader
-    //!@{
-
-    //! Peek at next "len" bytes of the stream
-    //! \returns a string
+    /**
+     * @brief 从缓冲区的输出端复制字节
+     * @param[in] len 复制的字符串长度
+     * @return 返回复制的字符串
+     */
     std::string peek_output(const size_t len) const;
 
-    //! Remove bytes from the buffer
+    /**
+     * @brief 从缓冲区的输出端进行删除
+     * @param[in] len 删除的长度
+     */
     void pop_output(const size_t len);
 
-    //! Read (i.e., copy and then pop) the next "len" bytes of the stream
-    //! \returns a vector of bytes read
+    /**
+     * @brief 读取数据
+     * @param[in] len 要读取的长度
+     * @return 返回读取的字符串
+     */
     std::string read(const size_t len) {
         const auto ret = peek_output(len);
         pop_output(len);
         return ret;
     }
 
-    //! \returns `true` if the stream input has ended
+    /**
+     * @return 如果流已经结束，返回true
+     */
     bool input_ended() const;
 
-    //! \returns `true` if the stream has suffered an error
+    /**
+     * @return 如果流发生错误，返回true
+     */
     bool error() const { return _error; }
 
-    //! \returns the maximum amount that can currently be read from the stream
+    /**
+     * @return 当前可以从流中读取的最大数量
+     */
     size_t buffer_size() const;
 
-    //! \returns `true` if the buffer is empty
+    /**
+     * @return 如果缓冲区为空，则为true
+     */
     bool buffer_empty() const;
 
-    //! \returns `true` if the output has reached the ending
+    /**
+     * @return 如果输出到达结尾，则为true
+     */
     bool eof() const;
-    //!@}
 
-    //! \name General accounting
-    //!@{
-
-    //! Total number of bytes written
+    /**
+     * @return 写入的总字节数
+     */
     size_t bytes_written() const;
 
-    //! Total number of bytes popped
+    /**
+     * @return 读取的总字节数
+     */
     size_t bytes_read() const;
-    //!@}
 };
 
 #endif  // SPONGE_LIBSPONGE_BYTE_STREAM_HH
