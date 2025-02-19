@@ -1,25 +1,40 @@
 Lab 1 Writeup
 =============
 
-My name: [your name here]
+**文档关键点记载
 
-My SUNet ID: [your sunetid here]
+TCP发送方将其字节流划分为短段（每个子串不超过约1，460字节），以便它们每个都适合一个数据报。但是网络可能会重新排列这些数据报，或者丢弃它们，或者不止一次地发送它们。接收方必须将这些段重新组合成它们开始时的连续字节流。
 
-This lab took me about [n] hours to do.
+1. 整个流中第一个字节的索引是多少？零.
 
-Program Structure and Design of the StreamReassembler:
-[]
+2. 不一致的子字符串应如何处理？你可以假设它们不存在。也就是说，你可以假设有一个唯一的底层字节流，所有的子串都是它的（准确的）切片。
 
-Implementation Challenges:
-[]
+3. 什么时候应该将字节写入流？越快越好字节不应该在流中的唯一情况是，在它之前有一个字节还没有被“推送”。
 
-Remaining Bugs:
-[]
+4. 子字符串是否可以重叠？是的
 
-- Optional: I had unexpected difficulty with: [describe]
+5. 我是否需要将私有成员添加到StreamReassembler中？是的由于数据段可能以任何顺序到达，因此您的数据结构必须“记住”子串，直到它们准备好放入数据流中，也就是说，直到它们之前的所有索引都已填充
 
-- Optional: I think you could make this lab better by: [describe]
 
-- Optional: I was surprised by: [describe]
+**大致解决思路
 
-- Optional: I'm not sure about: [describe]
+首先需要一个临时的数据结构来存储无须到达的数据段，由于需要对其进行排序，因此可以使用优先队列/set，在此，我们使用set，因为其底部是红黑树，可以自动排序，而优先队列只能保证队头最小。
+
+因此，我们使用一个结构体来描述到来的数据段，由于需要根据首索引来排序，因此重载比较规则，使其在set中按照首索引自动排序。
+
+同时，对于到来的数据碎片，可能重叠，可能是一个只包含EOF标志的空串；同时，拼好后，应该尽快写入ByteStream中。
+
+而当ByteStream满时，流重组器无法将拼好的数据存入ByteStream中，当流重组器满时，无法接收到来的数据
+
+**push_substring编写流程
+
+1. 首先需要判断容量是否满，如果满了，则需要丢弃，并直接返回
+
+2. 然后要处理冗余的前缀部分
+
+3. 处理完成之后，直接插入到set中，其实很类似于操作系统的进程管理，每次都要判断能否与前后缓冲区进行合并
+
+4. 如果有已经拼好的，则直接写入ByteStream
+
+5. 需要判断EOF
+

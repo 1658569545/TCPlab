@@ -6,16 +6,58 @@
 #include <cstdint>
 #include <string>
 #include <bits/stdc++.h>
+
 // 一个类，它将字节流中的一系列摘录（可能是无序的，也可能是重叠的）组装成有序的字节流。
 class StreamReassembler {
   private:
+    // 
+    /**
+     * @brief 用来描述各个到来的无序字节段
+     * @param[in] begin 字节段的首索引
+     * @param[in] length 字节段长度
+     * @param[in] end 数据段最后一个字节的索引
+     * @param[in] data 内容
+     */
+    struct node{
+      size_t begin=0;
+      size_t length=0;
+      size_t end=0;
+      std::string data="";
+      
+      /**
+       * @brief 重写比较规则
+       * @details this<t
+       */
+      bool operator<(const node t){
+        return begin<t.begin;
+      }
+    };
 
-    // 按顺序重新组装的字节流
+    /// @brief eof标记
+    bool eof_flag=false;
+
+    /// @brief 未装配的字节数
+    size_t _unassembled_byte = 0;
+
+    /// @brief 存放被流重组器按顺序重新组装的字节流
     ByteStream _output; 
 
-    // 最大字节数
-    size_t _capacity;   
+    /// @brief 最大字节数
+    size_t _capacity;  
+    
+    /// @brief 存储数据段 
+    set<node>reabuffer;
 
+    /// @brief 重组器中第一个字节索引
+    size_t _head_index=0;
+
+    /**
+     * @brief 对两个数据段进行拼接
+     * @param[in] eml1 第一个数据段
+     * @param[in] eml2 第二个数据段
+     * @return 返回重叠部分的字节数（？）
+     */
+    size_t splice_node(node &eml1,const node &eml2);
   public:
 
     /**
@@ -43,7 +85,7 @@ class StreamReassembler {
     ByteStream &stream_out() { return _output; }
   
     /**
-     * @brief 子字符串中已存储但尚未重新组装的字节数，即已经进入流重组器，但是还没有被写入流缓冲区的
+     * @brief 数据段中已存储但尚未重新组装的字节数，即已经进入流重组器，但是还没有被写入流缓冲区的
      * @attention 如果特定索引处的字节被提交了两次，则在此函数中应该只计算一次。
      */
     size_t unassembled_bytes() const;
