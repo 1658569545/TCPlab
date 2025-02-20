@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <bits/stdc++.h>
-
+#include <set>
 // 一个类，它将字节流中的一系列摘录（可能是无序的，也可能是重叠的）组装成有序的字节流。
 class StreamReassembler {
   private:
@@ -15,26 +15,23 @@ class StreamReassembler {
      * @brief 用来描述各个到来的无序字节段
      * @param[in] begin 字节段的首索引
      * @param[in] length 字节段长度
-     * @param[in] end 数据段最后一个字节的索引
      * @param[in] data 内容
      */
     struct node{
       size_t begin=0;
       size_t length=0;
-      size_t end=0;
       std::string data="";
       
       /**
        * @brief 重写比较规则
        * @details this<t
        */
-      bool operator<(const node t){
+      bool operator<(const node t)const{
         return begin<t.begin;
       }
     };
 
-    /// @brief eof标记
-    bool eof_flag=false;
+    
 
     /// @brief 未装配的字节数
     size_t _unassembled_byte = 0;
@@ -45,19 +42,22 @@ class StreamReassembler {
     /// @brief 最大字节数
     size_t _capacity;  
     
-    /// @brief 存储数据段 
-    set<node>reabuffer;
+    /// @brief eof标记
+    bool eof_flag=false;
 
-    /// @brief 重组器中第一个字节索引
+    /// @brief 存储数据段 
+    std::set<node>reabuffer;
+
+    /// @brief 重组器中第一个字节索引，所有小于该索引的字节均已写入字节流中
     size_t _head_index=0;
 
     /**
      * @brief 对两个数据段进行拼接
      * @param[in] eml1 第一个数据段
      * @param[in] eml2 第二个数据段
-     * @return 返回重叠部分的字节数（？）
+     * @return 返回两个数据段重叠的字节数，用来在后续判断是否合并
      */
-    size_t splice_node(node &eml1,const node &eml2);
+    long splice_node(node &eml1,const node &eml2);
   public:
 
     /**
