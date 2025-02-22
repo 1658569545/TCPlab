@@ -1,25 +1,20 @@
 Lab 2 Writeup
 =============
 
-My name: [your name here]
+**lab2实验文档关键翻译
 
-My SUNet ID: [your sunetid here]
+实现TCP的接收方，包括序列号、滑动窗口，累积确认等机制
 
-This lab took me about [n] hours to do.
+现在，在实验2中，您将实现TCP中处理入站字节流的部分：TCPReceiver。在编写StreamReassembler和ByteStream时，您已经完成了其中涉及的大部分“算法”工作;本周主要是将这些类连接到TCP格式。这将涉及考虑TCP如何表示每个字节在流中的位置-称为“序列号”。TCPReceiver负责告诉发送方（a）它已经成功组装了多少入站字节流（这称为“确认”）以及（B）发送方现在允许发送的字节范围（“流控制窗口”）。
 
-Program Structure and Design of the TCPReceiver:
-[]
+本周，您将实现TCP的“接收器”部分，负责接收TCP段（实际的数据报有效载荷），重组字节流（包括其结束，当发生时），并确定应该发送回发送器的信号进行确认和流量控制。
 
-Implementation Challenges:
-[]
+我为什么要这么做？这些信号对于TCP在不可靠的数据报网络上提供流控制的可靠字节流服务的能力至关重要。在TCP中，确认意味着“接收方需要的下一个字节的索引是什么，以便它能够重组更多的字节流？”这会告诉发送方需要发送或重新发送哪些字节。流量控制意味着“接收者感兴趣并愿意接收的指数范围是多少？”（通常作为其剩余容量的函数）。这将告诉发件人允许发送的数量。“
 
-Remaining Bugs:
-[]
+**序列号
+1. 开始和结束也算作序列中的一个位置：除了确保接收到所有字节的数据外，TCP还必须确保流的开始和结束也能接收到。因此，在TCP中，SYN（流的开始）和FIN（流的结束）标志也会被分配序列号。每一个都算作序列中的一个位置。数据流中的每个字节也算作一个序列位置。
 
-- Optional: I had unexpected difficulty with: [describe]
+2. 32位序列号的环绕：在我们的StreamReassembler中，索引始终从零开始并且是64位的，这样我们就不必担心会用完所有可能的64位索引。然而，在TCP中，传输的序列号是32位的，如果流足够长，序列号会环绕回去。（TCP中的流可以任意长——没有限制可以通过TCP发送的字节流的长度。所以环绕是非常常见的。）
 
-- Optional: I think you could make this lab better by: [describe]
+3. TCP序列号不从零开始：为了提高安全性并避免不同连接之间的混淆，TCP会尽量确保序列号无法被猜测，并且更不容易重复。因此，流的序列号不会从零开始。流中的第一个序列号通常是一个随机的32位数字，称为初始序列号（ISN）。这个序列号表示SYN（流的开始）。之后的序列号会正常递增——例如，第一个数据字节的序列号是ISN+1，第二个数据字节的序列号是ISN+2，以此类推。
 
-- Optional: I was surprised by: [describe]
-
-- Optional: I'm not sure about: [describe]
