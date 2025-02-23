@@ -143,6 +143,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         eof_flag=true;
     }
     if (eof_flag && empty()) {
+        // 设置字节流已经结束
         _output.end_input();
     }
 

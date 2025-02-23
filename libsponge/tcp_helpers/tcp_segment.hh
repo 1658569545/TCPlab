@@ -28,8 +28,10 @@ class TCPSegment {
     Buffer &payload() { return _payload; }
     //!@}
 
-    //! \brief Segment's length in sequence space
-    //! \note Equal to payload length plus one byte if SYN is set, plus one byte if FIN is set
+    /**
+     * @brief 片段在序列空间中的长度
+     * @attention 如果设置了SYN，则等于有效载荷长度加一个字节，如果设置了FIN，则等于一个字节
+     */
     size_t length_in_sequence_space() const;
 };
 

@@ -45,7 +45,7 @@ class ByteStream {
     size_t remaining_capacity() const;
 
     /**
-     * @brief 字节流到达其结束的信号
+     * @brief 设置字节流已经结束的信号
      */
     void end_input();
 

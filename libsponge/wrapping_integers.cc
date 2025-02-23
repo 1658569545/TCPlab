@@ -25,7 +25,7 @@ uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
     // 具体来说，假设TCP的初始序列号（ISN）是一个随机值，并且数据流可能很长。当发送的数据量超过了32位序列号的范围时，
     // 序列号就会回绕。例如：第一个发送的数据字节可能会有序列号17。如果数据很长，如果ISN为232,那么再次出现的17可能是232 + 17 + 2^32
     // 因此就需要检查点checkpoint来判断对应哪个绝对序列号
-    // checkpoint一般设置为最近解包的绝对序列号
+    // checkpoint一般设置为最近解包的绝对序列号,一般为上次的abs_seqno
     
     // 存储结果
     uint64_t res;

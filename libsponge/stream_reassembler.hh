@@ -48,7 +48,7 @@ class StreamReassembler {
     /// @brief 存储数据段 
     std::set<node>reabuffer;
 
-    /// @brief 重组器中第一个字节索引，所有小于该索引的字节均已写入字节流中
+    /// @brief 重组器中第一个字节索引，所有小于该索引的字节均已写入字节流中。也就是下一个需要处理的字节的位置
     size_t _head_index=0;
 
     /**
@@ -80,7 +80,7 @@ class StreamReassembler {
      */
     const ByteStream &stream_out() const { return _output; }
     /**
-     * @brief 访问重新组装的字节流
+     * @brief 访问ByteStream
      */
     ByteStream &stream_out() { return _output; }
   
@@ -95,6 +95,20 @@ class StreamReassembler {
      * @return 如果没有子字符串等待组装，则返回true
      */
     bool empty() const;
+
+    /**
+     * @brief 获取重组器的首索引,即下一个需要处理的字节的索引
+     */
+    size_t get_Head_index() const {
+      return _head_index;
+    }
+
+    /**
+     * @brief 判断缓冲区中的字节流是否已经结束
+     */
+    bool input_ended() const {
+      return _output.input_ended();
+    }
 };
 
 #endif  // SPONGE_LIBSPONGE_STREAM_REASSEMBLER_HH
