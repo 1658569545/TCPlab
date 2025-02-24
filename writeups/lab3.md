@@ -1,25 +1,18 @@
 Lab 3 Writeup
 =============
 
-My name: [your name here]
 
-My SUNet ID: [your sunetid here]
+**文档翻译
+负责实现TCP的发送端
 
-This lab took me about [n] hours to do.
+发送端会从ByteStream中读取数据，并将其转换为一系列的TCP端传出，并且会获取TCP接收方发送过来的窗口通知和ACK确认号
 
-Program Structure and Design of the TCPSender:
-[]
+TCPSender的主要任务：
+1. 跟踪接收方的窗口（处理传入的确认号（acknos）和窗口大小）
+2. 在可能的情况下填充窗口，通过从 ByteStream 中读取数据，创建新的 TCP 报文段（如果需要，包含 SYN 和 FIN 标志），并发送它们
+3. 跟踪已经发送但尚未被接收方确认的报文段——我们称这些为“未确认”报文段
+4. 如果经过足够的时间仍未收到确认，则重新发送这些未确认的报文段
 
-Implementation Challenges:
-[]
+为什么我要这么做？基本原则是发送接收方允许我们发送的内容（填充窗口），并持续重新发送，直到接收方确认每个报文段。这被称为“自动重传请求”（ARQ）。发送方将字节流划分为报文段并发送，尽可能多地发送，直到接收方的窗口允许为止。
 
-Remaining Bugs:
-[]
-
-- Optional: I had unexpected difficulty with: [describe]
-
-- Optional: I think you could make this lab better by: [describe]
-
-- Optional: I was surprised by: [describe]
-
-- Optional: I'm not sure about: [describe]
+感谢你上周的工作，我们知道只要远程 TCP 接收方至少接收到每个带有索引标签的字节一次——不管顺序如何，它就能重组字节流。发送方的任务是确保接收方至少接收到每个字节一次。

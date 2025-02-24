@@ -9,84 +9,109 @@
 #include <functional>
 #include <queue>
 
-//! \brief The "sender" part of a TCP implementation.
-
-//! Accepts a ByteStream, divides it up into segments and sends the
-//! segments, keeps track of which segments are still in-flight,
-//! maintains the Retransmission Timer, and retransmits in-flight
-//! segments if the retransmission timer expires.
+/**
+ * @brief TCP的发送端
+ * @details 接受字节流，将其分成段并发送这些段，跟踪哪些段仍在运行，维护重传计时器，并在重传计时器到期时重传正在运行的段。
+ */
 class TCPSender {
   private:
-    //! our initial sequence number, the number for our SYN.
+    /// @brief 初始序列号，在数值上为SYN端的序列号
     WrappingInt32 _isn;
 
-    //! outbound queue of segments that the TCPSender wants sent
+    /// @brief TCPSender想要发送的段的出站队列
     std::queue<TCPSegment> _segments_out{};
 
-    //! retransmission timer for the connection
+    /// @brief 连接的重传计时器
     unsigned int _initial_retransmission_timeout;
 
-    //! outgoing stream of bytes that have not yet been sent
+    /// @brief 尚未发送的传出字节流
     ByteStream _stream;
 
-    //! the (absolute) sequence number for the next byte to be sent
+    /// @brief 要发送的下一个字节的（绝对）序列号
     uint64_t _next_seqno{0};
 
   public:
-    //! Initialize a TCPSender
+    /**
+     * @brief 构造函数
+     * @param[in] capacity 输出字节流的容量
+     * @param[in] retx_timeout 在重传最老的未完成段之前等待的初始时间
+     * @param[in] fixed_isn 如果设置了该变量的值，则作为_isn使用，否则使用随机值来作为isn
+     */
     TCPSender(const size_t capacity = TCPConfig::DEFAULT_CAPACITY,
               const uint16_t retx_timeout = TCPConfig::TIMEOUT_DFLT,
               const std::optional<WrappingInt32> fixed_isn = {});
 
-    //! \name "Input" interface for the writer
-    //!@{
-    ByteStream &stream_in() { return _stream; }
+    /**
+     * @brief 获取尚未发送的传出字节流
+     */
+    ByteStream &stream_in() { 
+      return _stream; 
+    }
+
+    /**
+     * @brief 获取尚未发送的传出字节流
+     */
     const ByteStream &stream_in() const { return _stream; }
-    //!@}
+ 
 
-    //! \name Methods that can cause the TCPSender to send a segment
-    //!@{
-
-    //! \brief A new acknowledgment was received
+    /**
+     * @brief 是否收到了新的确认
+     * @param[in] ackno 远端接收方的确认号
+     * @param[in] window_size 远程接收器的窗口大小
+     * @details 可以导致TCPSender发送一个段的方法
+     * @return 如果确认无效（确认TCPSender尚未发送的内容），返回‘ false ’
+     */
     bool ack_received(const WrappingInt32 ackno, const uint16_t window_size);
 
-    //! \brief Generate an empty-payload segment (useful for creating empty ACK segments)
+    /**
+     * @brief 生成空有效载荷段（用于创建空ACK段）
+     */
     void send_empty_segment();
 
-    //! \brief create and send segments to fill as much of the window as possible
+    /**
+     * @brief 创建和发送段来填充尽可能多的窗口
+     */
     void fill_window();
 
-    //! \brief Notifies the TCPSender of the passage of time
+    /**
+     * @brief 通知TCPSender时间的流逝
+     * @param[in] ms_since_last_tick 自上次调用此方法以来的毫秒数
+     */
     void tick(const size_t ms_since_last_tick);
-    //!@}
 
-    //! \name Accessors
-    //!@{
-
-    //! \brief How many sequence numbers are occupied by segments sent but not yet acknowledged?
-    //! \note count is in "sequence space," i.e. SYN and FIN each count for one byte
-    //! (see TCPSegment::length_in_sequence_space())
+    /**
+     * @brief 计算有多少序列号被发送但尚未确认
+     * @attention SYN和FIN各计数一个字节
+     * @details 详见TCPSegment: length_in_sequence_space ()
+     */
     size_t bytes_in_flight() const;
 
-    //! \brief Number of consecutive retransmissions that have occurred in a row
+    /**
+     * @brief 返回连续重传的次数
+     */
     unsigned int consecutive_retransmissions() const;
 
-    //! \brief TCPSegments that the TCPSender has enqueued for transmission.
-    //! \note These must be dequeued and sent by the TCPConnection,
-    //! which will need to fill in the fields that are set by the TCPReceiver
-    //! (ackno and window size) before sending.
-    std::queue<TCPSegment> &segments_out() { return _segments_out; }
-    //!@}
+    /**
+     * @brief TCPSender已排队等待传输的报文段。
+     * @attention 这些数据必须从队列中取出并由TCPConnection发送，TCPConnection需要在发送之前填写由TCPReceiver设置的字段（确认号和窗口大小）。
+     */
+    std::queue<TCPSegment> &segments_out() { 
+      return _segments_out; 
+    }
 
-    //! \name What is the next sequence number? (used for testing)
-    //!@{
+    /**
+     * @brief 获取要发送的下一个字节的绝对序列号
+     */
+    uint64_t next_seqno_absolute() const { 
+      return _next_seqno; 
+    }
 
-    //! \brief absolute seqno for the next byte to be sent
-    uint64_t next_seqno_absolute() const { return _next_seqno; }
-
-    //! \brief relative seqno for the next byte to be sent
-    WrappingInt32 next_seqno() const { return wrap(_next_seqno, _isn); }
-    //!@}
+    /**
+     * @brief 获取要发送的下一个字节的相对顺序
+     */
+    WrappingInt32 next_seqno() const { 
+      return wrap(_next_seqno, _isn); 
+    }
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_SENDER_HH
