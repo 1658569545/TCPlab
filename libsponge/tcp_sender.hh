@@ -21,7 +21,7 @@ class TCPSender {
     /// @brief TCPSender想要发送的段的出站队列
     std::queue<TCPSegment> _segments_out{};
 
-    /// @brief 连接的重传计时器
+    /// @brief 连接的重传计时器，即重传超时（RTO）的初始值
     unsigned int _initial_retransmission_timeout;
 
     /// @brief 尚未发送的传出字节流
@@ -30,6 +30,32 @@ class TCPSender {
     /// @brief 要发送的下一个字节的（绝对）序列号
     uint64_t _next_seqno{0};
 
+    /// @brief 已经发送但是没有确认的TCPSegment
+    std::queue<TCPSegment> segments_unconfirmed ;
+
+    /// @brief 记录已发送但未被确认的字节总数
+    size_t _bytes_in_flight=0;
+
+    /// @brief 记录连续重传的次数
+    size_t _consecutive_retransmissions=0;
+
+    /// @brief 接收方已确认的最高绝对序列号（即下一个期望接收的字节的绝对序列号）
+    size_t _recv_ackno = 0;
+
+    /// @brief 自上次超时事件以来经过的时间（毫秒）
+    size_t _timer=0;
+
+    /// @brief RTO
+    size_t _retransmission_timeout=0;
+
+    /// @brief 指示重传定时器是否正在运行
+    bool _timer_running=false;
+
+    /// @brief SYN标志，标记是否已经发送了SYN报文段
+    bool syn_flag=false;
+
+    /// @brief FIN标志，标记是否已经发送了FIN报文段
+    bool fin_flag=false;
   public:
     /**
      * @brief 构造函数
@@ -51,22 +77,26 @@ class TCPSender {
     /**
      * @brief 获取尚未发送的传出字节流
      */
-    const ByteStream &stream_in() const { return _stream; }
+    const ByteStream &stream_in() const { 
+      return _stream; 
+    }
  
-
     /**
      * @brief 是否收到了新的确认
      * @param[in] ackno 远端接收方的确认号
      * @param[in] window_size 远程接收器的窗口大小
      * @details 可以导致TCPSender发送一个段的方法
+     * @attention 采用累积确认
      * @return 如果确认无效（确认TCPSender尚未发送的内容），返回‘ false ’
      */
     bool ack_received(const WrappingInt32 ackno, const uint16_t window_size);
 
     /**
      * @brief 生成空有效载荷段（用于创建空ACK段）
+     * @attention 无参版本
      */
     void send_empty_segment();
+
 
     /**
      * @brief 创建和发送段来填充尽可能多的窗口
@@ -112,6 +142,8 @@ class TCPSender {
     WrappingInt32 next_seqno() const { 
       return wrap(_next_seqno, _isn); 
     }
+
+    
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_SENDER_HH
