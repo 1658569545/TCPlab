@@ -8,7 +8,7 @@
 
 #include <functional>
 #include <queue>
-
+#include<sstream>
 /**
  * @brief TCP的发送端
  * @details 接受字节流，将其分成段并发送这些段，跟踪哪些段仍在运行，维护重传计时器，并在重传计时器到期时重传正在运行的段。
@@ -18,45 +18,56 @@ class TCPSender {
     /// @brief 初始序列号，在数值上为SYN端的序列号
     WrappingInt32 _isn;
 
-    /// @brief TCPSender想要发送的段的出站队列
+    /// @brief TCPSender想要发送的段的出站队列，即我们的发送实际上是放到这个队列里面，不需要具体实现如何发送
     std::queue<TCPSegment> _segments_out{};
 
     /// @brief 连接的重传计时器，即重传超时（RTO）的初始值
     unsigned int _initial_retransmission_timeout;
 
-    /// @brief 尚未发送的传出字节流
+    /// @brief 尚未发送的字节流
     ByteStream _stream;
 
     /// @brief 要发送的下一个字节的（绝对）序列号
     uint64_t _next_seqno{0};
 
     /// @brief 已经发送但是没有确认的TCPSegment
-    std::queue<TCPSegment> segments_unconfirmed ;
+    std::queue<TCPSegment> segments_unconfirmed{} ;
 
     /// @brief 记录已发送但未被确认的字节总数
     size_t _bytes_in_flight=0;
 
-    /// @brief 记录连续重传的次数
-    size_t _consecutive_retransmissions=0;
-
-    /// @brief 接收方已确认的最高绝对序列号（即下一个期望接收的字节的绝对序列号）
+    /// @brief 接收方已确认的最高绝对序列号
     size_t _recv_ackno = 0;
 
-    /// @brief 自上次超时事件以来经过的时间（毫秒）
+    /// @brief 记录重传计时器启动之后到现在的时间
     size_t _timer=0;
 
-    /// @brief RTO
+    /// @brief RTO（只针对单个数据段）
     size_t _retransmission_timeout=0;
 
-    /// @brief 指示重传定时器是否正在运行
+    /// @brief 指示重传定时器是否正在运行（只针对单个数据段）
     bool _timer_running=false;
+
+    /// @brief 记录连续重传的次数（只针对单个数据段）
+    size_t _consecutive_retransmissions=0;
 
     /// @brief SYN标志，标记是否已经发送了SYN报文段
     bool syn_flag=false;
 
     /// @brief FIN标志，标记是否已经发送了FIN报文段
     bool fin_flag=false;
+
+    /// @brief 记录窗口大小
+    size_t _window_size=0;
+
   public:
+    
+    /**
+     * @brief 发送段
+     * @param[in] seg 要发送的段
+     */
+    void send_segment(TCPSegment &seg);
+    
     /**
      * @brief 构造函数
      * @param[in] capacity 输出字节流的容量
@@ -83,7 +94,7 @@ class TCPSender {
  
     /**
      * @brief 是否收到了新的确认
-     * @param[in] ackno 远端接收方的确认号
+     * @param[in] ackno 远端接收方的确认号,即期待发送方的下一个序号
      * @param[in] window_size 远程接收器的窗口大小
      * @details 可以导致TCPSender发送一个段的方法
      * @attention 采用累积确认
@@ -97,6 +108,12 @@ class TCPSender {
      */
     void send_empty_segment();
 
+    /**
+     * @brief 生成空有效载荷段（用于创建空ACK段）
+     * @param[in] seqno 相对序列号
+     * @attention 有参版本
+     */
+    void send_empty_segment(WrappingInt32 seqno);
 
     /**
      * @brief 创建和发送段来填充尽可能多的窗口
@@ -122,7 +139,7 @@ class TCPSender {
     unsigned int consecutive_retransmissions() const;
 
     /**
-     * @brief TCPSender已排队等待传输的报文段。
+     * @brief 获取TCPSender已排队等待传输的报文段。
      * @attention 这些数据必须从队列中取出并由TCPConnection发送，TCPConnection需要在发送之前填写由TCPReceiver设置的字段（确认号和窗口大小）。
      */
     std::queue<TCPSegment> &segments_out() { 
