@@ -13,48 +13,49 @@ TCPSender::TCPSender(const size_t capacity, const uint16_t retx_timeout, const s
     : _isn(fixed_isn.value_or(WrappingInt32{random_device()()}))
     , _initial_retransmission_timeout{retx_timeout}
     , _stream(capacity) {
-        _retransmission_timeout=retx_timeout;
+        rto=retx_timeout;
 }
 
 uint64_t TCPSender::bytes_in_flight() const {
-    return _bytes_in_flight;
+    return bytes;
 }
 
 void TCPSender::fill_window() {
-    // 接收端会给发送端一个window_size,根据这个window_size，如果窗口没有被填满。并且发送端有数据需要发送，就发送出去，即压入_segments_out队列中
-
-    // 如果还没发送SYN段，则发送一个SYN段
+    // 先判断SYN
     if(!syn_flag){
+        // 发送SYN段
         TCPSegment seg;
         seg.header().syn=true;
         send_segment(seg);
-        syn_flag = true;
+        syn_flag=true;
         return ;
     }
+    
 
-    // 发送窗口
-    size_t win=_window_size>0? _window_size:1;
-    // 空余窗口
+    // 先获取窗口大小
+    size_t win=_window_size > 0 ? _window_size : 1;
+    // 空余位置
     size_t remain;
-    // 还没有发过FIN段，且窗口还有空间
     while(!fin_flag){
-        // 空闲空间=窗口大小-已经发送但还没收到确认
-        remain=win-(_next_seqno - _recv_ackno);
+        // 空闲=窗口-已经发送的
+        // 已经发送的=要发送的-已经收到确认的
+        remain=win-(_next_seqno-recv_seqno);
         if(remain==0){
             break;
         }
-        size_t size = min(TCPConfig::MAX_PAYLOAD_SIZE, remain);
-        TCPSegment seg;
-        // 填充内容
+        // 实际上的窗口空闲大小
+        size_t size=min(TCPConfig::MAX_PAYLOAD_SIZE,remain);
+        // 读取内容
         std::stringstream ss;
         ss<<_stream.read(size);
+        TCPSegment seg;
         seg.payload()=Buffer(std::move(ss.str()));
-        // 还能填充
-        if(seg.length_in_sequence_space()<win && _stream.eof()){
+        // 到达了末尾，且还有空闲空间，则加一个fin标志，fin标志也会消耗一个序列
+        if(_stream.eof() && seg.length_in_sequence_space()<win){
             seg.header().fin=true;
             fin_flag=true;
         }
-        // 如果是空的seg段
+        // 如果长度为0,则代表输出流是空的了（但不代表结束了，可能后面还会有字节流到来）
         if(seg.length_in_sequence_space()==0){
             return ;
         }
@@ -64,104 +65,100 @@ void TCPSender::fill_window() {
 }
 
 bool TCPSender::ack_received(const WrappingInt32 ackno, const uint16_t window_size) {
+    // 先将收到的ackno转换为绝对序列号
+    size_t abs_ackno=unwrap(ackno,_isn,recv_seqno);
+    // 更新窗口大小
+    _window_size = window_size;
 
-    size_t abs_ackno=unwrap(ackno,_isn,_recv_ackno);
+    // 大于下一个要发送的绝对序列号，肯定不行
     if(abs_ackno>_next_seqno){
         return false;
     }
-    // 如果ACK合法
-    _window_size=window_size;
-    
-    // 如果接收的abs_ackno已经确认过
-    if(abs_ackno<=_recv_ackno){
+
+    // 已经接收过了
+    if(abs_ackno<=recv_seqno){
         return true;
     }
 
-    // 更新_recv_ackno
-    _recv_ackno=abs_ackno;
+    // 排除掉以上两种之后，更新确认号
+    recv_seqno=abs_ackno;
 
-    // 弹出所有确认号之前的数据
-    while(!segments_unconfirmed.empty()){
-        TCPSegment seg=segments_unconfirmed.front();
-        // 如果有可以通过累积确认的数据段
-        if(unwrap(seg.header().seqno,_isn,_recv_ackno) + seg.length_in_sequence_space()<=abs_ackno){
-            segments_unconfirmed.pop();
-            _bytes_in_flight-= seg.length_in_sequence_space();
+    // 更新segment_outstading队列
+    while(!_segments_outstanding.empty()){
+        TCPSegment seg=_segments_outstanding.front();
+        // 判断TCP段是否被确认-----累积确认
+        // 小笔记：
+        // 已知ack n是确认n-1都已经到达，为什么这里可以等于
+        // 因为：例如ack=100,seqno=0,length=100,很明显tcp段的序号是0-99，但是0+100=100,因此可以=
+        if(unwrap(seg.header().seqno,_isn,recv_seqno) + seg.length_in_sequence_space()<=abs_ackno){
+            _segments_outstanding.pop();
+            bytes-=seg.length_in_sequence_space();
         }
-        // 如果队首不行，则弹出来
         else{
             break;
         }
     }
-    
-    // 有数据接收到了确认，现在可以窗口右移了
+
+    // 现在接收到了确认之后，就需要窗口往右边移动，因此，对窗口进行填充，并进行发送
     fill_window();
 
-    // 重置超时重传计时器和重传次数
-    _retransmission_timeout=_initial_retransmission_timeout;
-    _consecutive_retransmissions=0;
-
-    // 如果还有未收到的，则重新启动
-    if(!segments_unconfirmed.empty()){
-        _timer_running=true;
-        _timer=0;
+    // 发送之后，便重新启动计时和重传次数
+    rto=_initial_retransmission_timeout;
+    retransmissions=0;
+    // 很明显，只有有发送出去的TCP段，才会开始计时
+    if(!segments_out().empty()){
+        timer=0;
+        timer_running=true;
     }
     return true;
+
 }
 
 void TCPSender::tick(const size_t ms_since_last_tick) {
-    // 维护TCPSender的重传时间
-    _timer+=ms_since_last_tick;
-    // 如果时间超过了RTO，且有已经发送且没有被确认的，则重传
-    if(_timer>=_retransmission_timeout && !segments_unconfirmed.empty()){
-        // 第一个发送的肯定是最早出现超时的
-        _segments_out.push(segments_unconfirmed.front());
-        // 记录重传次数
-        _consecutive_retransmissions++;
-        // RTO翻倍
-        _retransmission_timeout*=2;
-        _timer_running=true;
-        _timer = 0;
+    // 超时重传的是全局累积的
+
+    // 时间累积
+    if(timer_running==true)    timer+=ms_since_last_tick;
+
+    // 如果超时了,则超时重传
+    if(timer>=rto && !_segments_outstanding.empty() ){
+        _segments_out.push(_segments_outstanding.front());
+        retransmissions++;
+        // 重传了，就要重新启动计时器
+        rto*=2;
+        timer_running = true;
+        timer = 0;
     }
-    if(segments_unconfirmed.empty()){
-        _timer_running=false;
+    if(_segments_outstanding.empty() ){
+        timer_running=false;
     }
 }
 
 
 unsigned int TCPSender::consecutive_retransmissions() const {
-    return _consecutive_retransmissions;
+    return retransmissions;
 }
 
-void TCPSender::send_empty_segment() {
-    // 发送空的TCP段
+void TCPSender::send_empty_segment(){
     TCPSegment seg;
     seg.header().seqno=wrap(_next_seqno,_isn);
-    _segments_out.push(seg);
-    return ;
-}
-
-void TCPSender::send_empty_segment(WrappingInt32 seqno){
-    TCPSegment seg;
-    seg.header().seqno=seqno;
     // 加入发送队列
     _segments_out.push(seg);
     return ;
 }
 
 void TCPSender::send_segment(TCPSegment &seg){
-    // 填写相对序号
     seg.header().seqno=wrap(_next_seqno,_isn);
-    // 更新绝对序号
+    
+    // 更新相关数据
     _next_seqno+=seg.length_in_sequence_space();
-    // 更新已经发送但没有确认的字节数
-    _bytes_in_flight+=seg.length_in_sequence_space();
-    segments_unconfirmed.push(seg);
+    bytes+=seg.length_in_sequence_space();
     _segments_out.push(seg);
-    // 如果重传计时器没有开始运行
-    if(!_timer_running){
-        _timer_running=true;
-        _timer=0;
+    _segments_outstanding.push(seg);
+    // 启动重传计时器
+    if(!timer_running){
+        timer_running=true;
+        timer=0;
     }
+    return ;
 }
-

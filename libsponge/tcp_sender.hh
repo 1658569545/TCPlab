@@ -15,55 +15,54 @@
  */
 class TCPSender {
   private:
-    /// @brief 初始序列号，在数值上为SYN端的序列号
-    WrappingInt32 _isn;
+    /// @brief 初始序列号
+    WrappingInt32 _isn; 
 
-    /// @brief TCPSender想要发送的段的出站队列，即我们的发送实际上是放到这个队列里面，不需要具体实现如何发送
+    /// @brief 发送队列
     std::queue<TCPSegment> _segments_out{};
 
-    /// @brief 连接的重传计时器，即重传超时（RTO）的初始值
+    /// @brief 初始的重传时间
     unsigned int _initial_retransmission_timeout;
 
-    /// @brief 尚未发送的字节流
+    /// @brief 输出流
     ByteStream _stream;
 
-    /// @brief 要发送的下一个字节的（绝对）序列号
+    /// @brief 要发送的下一个绝对序列号
     uint64_t _next_seqno{0};
 
-    /// @brief 已经发送但是没有确认的TCPSegment
-    std::queue<TCPSegment> segments_unconfirmed{} ;
+    /// @brief 已经接收的最大确认序列号（绝对）
+    uint64_t recv_seqno=0;
 
-    /// @brief 记录已发送但未被确认的字节总数
-    size_t _bytes_in_flight=0;
-
-    /// @brief 接收方已确认的最高绝对序列号
-    size_t _recv_ackno = 0;
-
-    /// @brief 记录重传计时器启动之后到现在的时间
-    size_t _timer=0;
-
-    /// @brief RTO（只针对单个数据段）
-    size_t _retransmission_timeout=0;
-
-    /// @brief 指示重传定时器是否正在运行（只针对单个数据段）
-    bool _timer_running=false;
-
-    /// @brief 记录连续重传的次数（只针对单个数据段）
-    size_t _consecutive_retransmissions=0;
-
-    /// @brief SYN标志，标记是否已经发送了SYN报文段
+    /// @brief SYN标志
     bool syn_flag=false;
 
-    /// @brief FIN标志，标记是否已经发送了FIN报文段
+    /// @brief fin标志
     bool fin_flag=false;
 
-    /// @brief 记录窗口大小
-    size_t _window_size=0;
+    /// @brief 初始RTO
+    size_t rto=0;
 
+    /// @brief 重传次数
+    size_t retransmissions=0;
+
+    /// @brief 已经发送但是没有收到确认的TCP段队列
+    std::queue<TCPSegment> _segments_outstanding{};
+
+    /// @brief 已经发送但是没有确认的字节数
+    size_t bytes=0;
+
+    /// @brief 超时重传计时器是否正在启动
+    bool timer_running=false;
+
+    /// @brief 从超时重传计时器启动之后到现在的时间
+    size_t timer=0;
+
+    /// @brief 窗口大小
+    size_t _window_size=0;
   public:
     
     /**
-     * @brief 发送段
+     * @brief 封装一个发送段，用来复用
      * @param[in] seg 要发送的段
      */
     void send_segment(TCPSegment &seg);
@@ -107,13 +106,6 @@ class TCPSender {
      * @attention 无参版本
      */
     void send_empty_segment();
-
-    /**
-     * @brief 生成空有效载荷段（用于创建空ACK段）
-     * @param[in] seqno 相对序列号
-     * @attention 有参版本
-     */
-    void send_empty_segment(WrappingInt32 seqno);
 
     /**
      * @brief 创建和发送段来填充尽可能多的窗口
