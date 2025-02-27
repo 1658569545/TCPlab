@@ -1,25 +1,70 @@
-Lab 4 Writeup
+Lab 4 笔记
 =============
 
-My name: [your name here]
+### 文档翻译
+接收数据段。TCPConnection 将从互联网接收 TCPSegments，并且：
+- 如果 ack 标志被设置，则将其关心的字段（ackno 和窗口大小）告知 TCPSender。
+- 将数据段传递给 TCPReceiver，以便它检查自己关心的字段（seqno、syn、payload 和 fin）。
 
-My SUNet ID: [your sunetid here]
+发送数据段。TCPConnection 将通过互联网发送 TCPSegments：
+- 每当 TCPSender 将数据段推送到其发送队列时，并设置其负责的字段（seqno、syn、payload 和 fin）。  
+- 在发送数据段之前，TCPConnection 会向 TCPReceiver 请求其负责的字段（ackno 和窗口大小）。如果存在 ackno，它将设置 ack 标志，并在 TCPSegment 中填充相应字段。
 
-This lab took me about [n] hours to do. I [did/did not] attend the lab session.
-
-Program Structure and Design of the TCPConnection:
-[]
-
-Implementation Challenges:
-[]
-
-Remaining Bugs:
-[]
-
-- Optional: I had unexpected difficulty with: [describe]
-
-- Optional: I think you could make this lab better by: [describe]
-
-- Optional: I was surprised by: [describe]
-
-- Optional: I'm not sure about: [describe]
+### 常见问题和特殊情况 
+#### 需要多少代码：
+- 总的来说，我们预计实现（在tcp connection.cc中）总共需要大约100-150行代码。完成后，测试套件将广泛测试您与自己的实现以及Linux内核的TCP实现的互操作性。
+#### 我应该如何开始：
+- 最好的开始方式可能是将一些“普通”方法与 TCPSender 和 TCPReceiver 中的适当调用连接起来。这可能包括诸如剩余的出站容量（`capacity()`）、正在传输的字节数（`bytes in flight()`）和未重组字节数（`unassembled bytes()`）之类的内容。
+- 然后，您可以选择实现“写入器”方法：`connect()`、`write()` 和 `end input stream()`。这些方法中的一些可能需要对出站 ByteStream（由 TCPSender拥有）进行某些操作，并告知 TCPSender。在完全实现每个方法之前，您可能选择开始运行测试套件（`make check`）；测试失败的消息可以为您提供线索或指南，告诉您接下来该做什么。
+#### 应用程序如何从入站流中读取数据？
+- TCPConnection：：inbound stream（）已经在头文件中实现
+#### TCP连接是否需要任何花哨的数据结构或算法？
+- 不，真的没有。繁重的工作全部由您已经实现的TCPSender和TCPReceiver完成。这里的工作实际上只是将所有东西连接起来，并处理一些挥之不去的连接范围内的微妙之处，这些微妙之处不容易被发送者和接收者考虑在内。
+#### TCP连接实际上是如何发送数据段的？
+- 类似于 TCPSender——将其推送到出站段队列中。就 TCPConnection 来说，一旦将其推送到这个队列中，就可以认为它已经被发送。稍后，拥有者会使用公共的 `segments out()` 访问方法来弹出它，并真正发送它。
+#### TCPConnection如何了解时间的流逝？
+- 类似于 TCPSender——`tick()` 方法将会周期性地被调用。请不要使用其他任何方式来获取时间——`tick` 方法是你访问时间流逝的唯一途径。这能保证程序的确定性和可测试性。
+#### 如果一个传入的段设置了 rst 标志，TCPConnection 应该怎么做?
+- 该标志（“reset”）意味着连接将立即中断。如果收到一个设置了rst标志的段，应该将传入和传出的ByteStream 的错误标志设置为真，并且随后的任何对 TCPConnection::active() 的调用应该返回 false。
+#### 什么时候我应该发送设置了 rst 标志的段？ 有两种情况你可能需要终止整个连接：
+- 如果发送方已经连续发送了太多重传段，但仍未成功（超过 TCPConfig::MAX_RETX_ATTEMPTS，即 8 次）。
+- 如果在连接仍然处于活动状态（即 active() 返回 true）时调用了 TCPConnection 的析构函数。
+- 发送一个设置了 rst 标志的段和接收到这样的段效果类似：连接被关闭并且不再是活动的，两个 ByteStream 都应该被设置为错误状态。
+#### 怎么生成一个可以设置 rst 标志的段？它的序列号是多少？
+- 任何传出的段都需要有正确的序列号。你可以通过调用 TCPSender 的 send_empty_segment() 方法，强制它生成一个空的段，并使用正确的序列号。
+- 或者，你可以通过调用 fill_window() 方法，强制 TCPSender 填充窗口（如果它有未发送的信息，例如来自流的数据或 SYN/FIN 标志）。
+#### ack 标志的目的是什么？不是所有的段都有 ackno 吗？
+- 几乎每个 TCPSegment 都有一个 ackno，并且 ack 标志会被设置。唯一的例外是在连接的开始阶段，接收方还没有任何东西需要确认。 
+- 在传出的段上，任何时候只要可能，你都应该设置 ackno 和 ack 标志。即，每当 TCPReceiver 的 ackno() 方法返回一个具有值的 std::optional<WrappingInt32>，你就可以使用 has_value() 来测试这个值。 在接收的段上，你只需要在 ack 字段被设置时查看 ackno。如果是这样的话，将该 ackno（和窗口大小）传递给 TCPSender。
+#### 接收到一个段时，如果 TCPReceiver 报告段没有覆盖窗口并且不可接受（received() 返回 false），该怎么办？
+- 在这种情况下，TCPConnection 需要确保向对端发送一个段，返回当前的 ackno 和窗口大小。这有助于纠正对端的错误。
+#### 如果 TCPConnection 收到一个段，而 TCPSender 报告 ackno 无效（ack_received() 返回 false），该怎么办？
+- 答案一样
+#### 如果 TCPConnection 收到一个段，并且一切正常？我还需要回复吗？
+- 如果该段占用了任何序列号，那么你需要确保它被确认——至少需要向对端发送一个带有适当序列号的新段，并带有新的 ackno 和窗口大小。
+- 你可能不需要做任何强制操作，因为 TCPSender 通常会在 ack_received() 中决定发送一个新的段（因为窗口中有了更多的空间）。但即使 TCPSender 没有更多数据发送，你仍然需要确保以某种方式确认接收到的段。
+#### 如果 TCPConnection 每次都确认每个段，即使它没有占用任何序列号，怎么办
+- 这不是个好主意！这样两个对端将会不断地发送无穷多的确认包，像乒乓球一样来回传递。
+#### 怎么解读这些“状态”名称（比如“stream started” 或 “stream ongoing”）
+- 请查看 libsponge/tcp_helpers/tcp_state.hh 和 tcp_state.cc 文件。
+#### 如果 TCPReceiver 想要广告一个大于 TCPSegment::header().win 字段所能容纳的窗口大小，应该发送什么样的窗口大小？
+-  发送你能发送的最大值。你可以使用 std::numeric_limits 类来帮助你。
+### TCP 连接的结束：达成一致需要付出努力
+- 当TCP连接结束之后，active()方法会返回false;连接结束有两种方式。
+- 首先是接收/发送rst标志，在非正常关闭的情况下，TCPConnection发送/接收带有 rst 标志的段。在这种情况下，出站和入站的 ByteStreams 都应该处于错误状态，active() 方法可以立即返回 false。
+- 其次是正常关闭。正常关闭更为复杂，但它是美妙的，因为它尽可能确保两个 ByteStreams 已可靠地完整传输到接收端。
+#### 要实现与远程对等方的正常关闭，需要满足如下四个条件：
+1. 入站流已经完全组装并且已结束。
+2. 出站流已被本地应用程序结束，并且已经完全发送（包括结束标志，即带有 fin 的段）给远程对等方。
+3. 出站流已经被远程对等方完全确认。
+4. 本地 TCPConnection 确信远程对等方能够满足前提条件3。实现这一点有两种替代方式：
+    - 在两个流结束后继续存在。
+        - 前提条件1-3都成立，并且远程对等方似乎已经收到了本地对等方的整个流的确认。尽管本地对等方不能完全确定这一点——TCP 不可靠地交付确认（即不会确认确认）。但本地对等方相当有信心，远程对等方已经收到了它的确认，因为远程对等方似乎没有重新传输任何数据，并且本地对等方已经等待了一段时间以确保这一点。
+        - 具体来说，当前提条件1-3满足，并且自本地对等方收到远程对等方任何段以来已经至少过了10倍的初始重传超时（cfg.rt_timeout），连接就完成了。这被称为“在两个流结束后继续存在”，以确保远程对等方没有试图重新传输任何我们需要确认的数据。这意味着即使TCPSender和TCPReceiver完全完成了它们的任务并且两个流已经结束，TCPConnection仍然需要保持活跃一段时间，保持对本地端口号的独占，并可能会对传入的段发送确认。
+    - 被动关闭（其实必定成立）。
+        - 前提条件1-3都成立，并且本地对等方100%确信远程对等方能够满足前提条件3。
+        - 解释：为什么本地能够100%相信远程对等方能够满足条件3。假设A是本地，B是远程。
+            - 首先B->A发送FIN数据段。A接收并进行组装，因此A能够满足条件1。然后，A->B发送对FIN数据段的确认，同时也会带有FIN段来满足条件2，然后B接收到之后，就会知道，B发送的FIN数据段被A完全接收了。因此B就能必定满足3。
+### TCP连接的结束（实用摘要）
+- 实际上，这意味着你的 `TCPConnection` 有一个名为 `_linger_after_streams_finish` 的成员变量，通过 `state()` 方法暴露给测试系统。这个变量初始值为 `true`。如果入站流在 `TCPConnection` 的出站流达到 EOF 之前结束，那么这个变量需要设置为 `false`。
+- 在满足前提条件 #1 到 #3 的任何时刻，如果 `_linger_after_streams_finish` 为 `false`，则连接被认为是“完成的”（此时 `active()` 应返回 `false`）。否则，你需要继续保持连接：连接只有在自上次接收到段以来经过足够的时间（10 × `cfg.rt_timeout`）后，才被认为完成。

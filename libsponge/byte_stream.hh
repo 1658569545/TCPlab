@@ -40,7 +40,7 @@ class ByteStream {
     size_t write(const std::string &data);
 
     /**
-     * @return 流有空间容纳的额外字节数
+     * @return 流缓冲区还能容纳的字节数
      */
     size_t remaining_capacity() const;
 
@@ -89,7 +89,7 @@ class ByteStream {
     bool error() const { return _error; }
 
     /**
-     * @return 当前可以从流中读取的最大数量
+     * @return 流缓冲区中的字节数
      */
     size_t buffer_size() const;
 
