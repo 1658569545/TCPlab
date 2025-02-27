@@ -93,8 +93,6 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
     return true;
 }
 
-
-
 optional<WrappingInt32> TCPReceiver::ackno() const {
     // _base是接收端窗口期望的下一个字节的绝对序列号，即接收窗口中第一个未被确认的字节位置。
     // 所以当最开始的时候，缓冲区接收的数据为0,因此接收端窗口会顶在最前面，

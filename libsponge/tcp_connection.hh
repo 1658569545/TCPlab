@@ -22,7 +22,21 @@ class TCPConnection {
 
     /// @brief 存储从收到最后一个报文段到现在的毫秒数
     size_t last_since_ack_time{0};
+
+    /// @brief 存储流的连接状态
+    bool _active=true;
+
   public:
+
+    /**
+     * @brief 判断是否处于SYN_SENT状态
+     */
+    bool in_syn_sent() const;
+
+    /**
+     * @brief 判断是否处于SYN_RECV状态
+     */
+    bool in_syn_recv() const;
 
     /**
      * @brief 通过发送SYN段发起连接

@@ -25,7 +25,7 @@ class TCPReceiver {
     /// @brief FIN信号
     bool _FIN_flag = false;
 
-    /// @brief rev窗口期望的下一个字节的绝对序列号，即接收窗口中第一个未被确认的字节位置。
+    /// @brief recv窗口期望的下一个字节的绝对序列号，即接收窗口中第一个未被确认的字节位置。
     size_t _base=0;
 
     /// @brief 随机初始序列号

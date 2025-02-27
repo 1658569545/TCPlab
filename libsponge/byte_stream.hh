@@ -33,9 +33,9 @@ class ByteStream {
     ByteStream(const size_t capacity);
 
     /**
-     * @brief 读取数据
+     * @brief 写数据
      * @param[in] data 数据
-     * @return 返回成功读取数据的长度
+     * @return 返回成功写数据的长度
      */
     size_t write(const std::string &data);
 
