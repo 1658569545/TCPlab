@@ -109,8 +109,9 @@ class TCPSender {
 
     /**
      * @brief 创建和发送段来填充尽可能多的窗口
+     * @attention 参数是供lab4使用的，表示是否发送SYN段，对于lab3无影响，本来想在lab4中操作syn_flag，但是该变量是私有的，就没有考虑
      */
-    void fill_window();
+    void fill_window(bool send_syn=true);
 
     /**
      * @brief 通知TCPSender时间的流逝

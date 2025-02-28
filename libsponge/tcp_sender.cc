@@ -20,15 +20,17 @@ uint64_t TCPSender::bytes_in_flight() const {
     return bytes;
 }
 
-void TCPSender::fill_window() {
+void TCPSender::fill_window(bool send_syn) {
     // 先判断SYN
     if(!syn_flag){
         // 发送SYN段
-        TCPSegment seg;
-        seg.header().syn=true;
-        send_segment(seg);
-        syn_flag=true;
-        return ;
+        if(send_syn){
+            TCPSegment seg;
+            seg.header().syn=true;
+            send_segment(seg);
+            syn_flag=true;
+            return ;
+        }
     }
     
 

@@ -40,7 +40,7 @@ class TCPReceiver {
     TCPReceiver(const size_t capacity) : _reassembler(capacity), _capacity(capacity) {}
 
     /**
-     * @brief 发送确认序号给对方
+     * @brief 获取确认序号
      * @return 如果未接收到SYN，则返回空
      * @attention TCP接收方的开始
      * @details optional是C++17引入的一个模板类，用于表示一个可能存在，也可能为空的值。可以看作是一个封装器，封装了一个值，这个值可能存在，也可能不存在。最常见的用途是返回一个可能失败的结果

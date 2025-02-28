@@ -67,4 +67,4 @@ Lab 4 笔记
             - 首先B->A发送FIN数据段。A接收并进行组装，因此A能够满足条件1。然后，A->B发送对FIN数据段的确认，同时也会带有FIN段来满足条件2，然后B接收到之后，就会知道，B发送的FIN数据段被A完全接收了。因此B就能必定满足3。
 ### TCP连接的结束（实用摘要）
 - 实际上，这意味着你的 `TCPConnection` 有一个名为 `_linger_after_streams_finish` 的成员变量，通过 `state()` 方法暴露给测试系统。这个变量初始值为 `true`。如果入站流在 `TCPConnection` 的出站流达到 EOF 之前结束，那么这个变量需要设置为 `false`。
-- 在满足前提条件 #1 到 #3 的任何时刻，如果 `_linger_after_streams_finish` 为 `false`，则连接被认为是“完成的”（此时 `active()` 应返回 `false`）。否则，你需要继续保持连接：连接只有在自上次接收到段以来经过足够的时间（10 × `cfg.rt_timeout`）后，才被认为完成。
+- 在满足前提条件 #1 到 #3 的任何时刻，如果 `_linger_after_streams_finish` 为 `false`，则 `active()` 应返回 `false`。如果`_linger_after_streams_finish` 为 `true`，就需要判定是否超时，即从上次接收段之后到现在是否超过了 10 * rfg.rt_timeout，如果超过了，则判定连接已经完成了，此时`active()` 应返回 `false`。

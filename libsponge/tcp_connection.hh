@@ -26,17 +26,38 @@ class TCPConnection {
     /// @brief 存储流的连接状态
     bool _active=true;
 
+    /// @brief 是否需要发送rst段
+    bool _need_send_rst{false};
   public:
+    
+    /**
+     * @brief 发送数据
+     * @attention 将_sender的发送队列中的数据发送出去
+     * @param[in] send_syn 表示是否发送SYN段，默认不发送
+     */
+    bool push_segments_out(bool send_syn = false);
+
+    /**
+     * @brief 中断连接
+     * @param[in] sent_rst 是否需要发送rst段
+     * @attention 由于RST标志引起的关闭
+     */
+    void unclean_shutdown(bool sent_rst);
+
+    /**
+     * @brief 正常中断连接
+     */
+    bool clean_shutdown();
 
     /**
      * @brief 判断是否处于SYN_SENT状态
      */
-    bool in_syn_sent() const;
+    bool in_syn_sent() ;
 
     /**
      * @brief 判断是否处于SYN_RECV状态
      */
-    bool in_syn_recv() const;
+    bool in_syn_recv() ;
 
     /**
      * @brief 通过发送SYN段发起连接
@@ -55,7 +76,7 @@ class TCPConnection {
     size_t remaining_outbound_capacity() const;
 
     /**
-     * @brief 关闭出站字节流（仍然允许读取传入数据）
+     * @brief 关闭出站字节流，但是不会关闭入站字节流
      */
     void end_input_stream();
 
@@ -97,6 +118,7 @@ class TCPConnection {
     /**
      * @brief 周期性调用
      * @param[in] ms_since_last_tick 自上次调用该函数以来运行了多久
+     * @attention 同时也能判断对方是否还存在
      */
     void tick(const size_t ms_since_last_tick);
 
