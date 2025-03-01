@@ -27,22 +27,14 @@ size_t ByteStream::write(const string &data) {
     for(size_t i=0;i<len;i++){
         _buffer.push_back(data[i]);
     }
+
     return len;
 }
 
 
 string ByteStream::peek_output(const size_t len) const {
-    size_t length=len;
-    // 丢弃一部分
-    if(length >_buffer.size()){
-        length = _buffer.size();
-    }
-    
-    stringstream ss;
-    for(size_t i=0;i<length;i++){
-        ss<<_buffer[i];
-    }
-    return ss.str();
+    const size_t copy_len = std::min(len, _buffer.size());
+    return string(_buffer.begin(), _buffer.begin() + copy_len);
 }
 
 void ByteStream::pop_output(const size_t len) { 

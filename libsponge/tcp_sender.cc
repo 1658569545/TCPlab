@@ -123,7 +123,8 @@ void TCPSender::tick(const size_t ms_since_last_tick) {
     // 超时重传的是全局累积的
 
     // 时间累积
-    timer+=ms_since_last_tick;
+    if(timer_running)
+        timer+=ms_since_last_tick;
 
     // 如果超时了,则超时重传
     if(timer>=rto && !_segments_outstanding.empty() ){

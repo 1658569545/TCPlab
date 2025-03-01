@@ -1,4 +1,4 @@
-#include "socket.hh"
+#include "tcp_sponge_socket.hh"
 #include "util.hh"
 
 #include <cstdlib>
@@ -8,7 +8,8 @@ using namespace std;
 
 void get_URL(const string &host, const string &path) {
     // 实现一个webget 
-    TCPSocket sock{};
+
+    CS144TCPSocket sock{};
     sock.connect(Address(host,"http"));
     sock.write("GET "+path+" HTTP/1.1\r\n");
     sock.write("Host: "+host+"\r\n\r\n");
@@ -16,7 +17,7 @@ void get_URL(const string &host, const string &path) {
     while(!sock.eof()){
         cout<<sock.read();
     }
-    sock.close();
+    sock.wait_until_closed();
     return ;
 } 
 

@@ -7,7 +7,7 @@
 #include <list>
 #include <string>
 #include <utility>
-
+#include <buffer.hh>
 // 实现一个可靠的字符串流
 
 class ByteStream {
