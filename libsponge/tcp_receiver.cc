@@ -16,7 +16,7 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
     // 记录TCP数据段的有效载荷长度
     size_t length=0;
     // 记录当前TCP数据段有效载荷的首个绝对序列号
-    size_t abs_seqno=0;
+    static size_t abs_seqno=0;
     // 记录是否接收了SYN/FIN段
     bool ret=false;
 
@@ -66,15 +66,16 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
         _FIN_flag=true;
         ret=true;
     }
-
+    // 不是FIN段，也不是SYN段，可能是空的ACK段，或者是空数据段
+    else if(seg.length_in_sequence_space() == 0 && abs_seqno ==_base){
+        return true;
+    }
     // 判断是否在窗口外
-    if(_base + window_size() <= abs_seqno ||abs_seqno + length <=_base  ){
-        // 如果不是SYN/FIN段，即是正常数据段
-        if (!ret) {
-            return false;
+    else if(abs_seqno>=_base + window_size() || abs_seqno + length <= _base){
+        if(!ret){
+            return false;   
         }
     }
-
 
     // 开始重组数据，注意abs_seqno是TCP绝对序列号，会计算SYN，而此时我们需要的索引是针对流的，而流忽略了SYN，因此需要-1.
     _reassembler.push_substring(seg.payload().copy(),abs_seqno-1,seg.header().fin);
@@ -88,11 +89,66 @@ bool TCPReceiver::segment_received(const TCPSegment &seg) {
         // FIN会消耗一个序列
         _base+=1;
     }
-    
 
     return true;
 }
 
+/*
+bool TCPReceiver::segment_received(const TCPSegment &seg){
+    bool ret=false;
+    static size_t abs_seqno=0;
+    size_t length=0;
+    if(seg.header().syn){
+        if(_SYN_flag){
+            return false;
+        }
+        _SYN_flag=true;
+        ret=true;
+        _isn=seg.header().seqno.raw_value();
+        abs_seqno=1;
+        _base=1;
+        length=seg.length_in_sequence_space()-1;
+        if(length==0){
+            return true;
+        }
+    }
+    else if(!_SYN_flag){
+        return false;
+    }
+    // 不是SYN段，且已经收到过了SYN段，进行绝对序列号计算
+    else{
+        abs_seqno=unwrap(WrappingInt32(seg.header().seqno.raw_value()),WrappingInt32(_isn),abs_seqno);
+        length=seg.length_in_sequence_space();
+    }
+
+    // 判断是否是FIN段
+    if(seg.header().fin){
+        if(_FIN_flag){
+            return false;
+        }
+        ret=true;
+        _FIN_flag=true;
+    }
+    // 不是FIN段，也不是SYN段，可能是空的ACK段，或者是空数据段
+    else if(seg.length_in_sequence_space() == 0 && abs_seqno ==_base){
+        return true;
+    }
+    else if(abs_seqno>=_base + window_size() || abs_seqno + length <= _base){
+        if(!ret){
+            return false;   
+        }
+    }
+
+    // 拼接数据
+    _reassembler.push_substring(seg.payload().copy(),abs_seqno-1,seg.header().fin);
+    _base=_reassembler.get_Head_index()+1;
+
+    if(_reassembler.input_ended()){
+        _base++;
+    }
+    return true;
+}
+*/
 optional<WrappingInt32> TCPReceiver::ackno() const {
     // _base是接收端窗口期望的下一个字节的绝对序列号，即接收窗口中第一个未被确认的字节位置。
     // 所以当最开始的时候，缓冲区接收的数据为0,因此接收端窗口会顶在最前面，

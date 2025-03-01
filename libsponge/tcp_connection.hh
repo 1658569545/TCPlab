@@ -23,44 +23,25 @@ class TCPConnection {
     /// @brief 存储从收到最后一个报文段到现在的毫秒数
     size_t last_since_ack_time{0};
 
-    /// @brief 存储流的连接状态
-    bool _active=true;
+    bool _active = true;
+    bool _need_send_rst = false;
 
-    /// @brief 是否需要发送rst段
-    bool _need_send_rst{false};
-  public:
-    
     /**
      * @brief 发送数据
-     * @attention 将_sender的发送队列中的数据发送出去
-     * @param[in] send_syn 表示是否发送SYN段，默认不发送
+     * @param [in] send_syn 是否需要发送syn段
+     * @attention 将_sender的发送队列中的数据传输到TCPConnection的发送队列中
      */
     bool push_segments_out(bool send_syn = false);
 
-    /**
-     * @brief 中断连接
-     * @param[in] sent_rst 是否需要发送rst段
-     * @attention 由于RST标志引起的关闭
-     */
-    void unclean_shutdown(bool sent_rst);
-
-    /**
-     * @brief 正常中断连接
-     */
+    void unclean_shutdown(bool send_rst);
     bool clean_shutdown();
+    bool in_syn_recv();
+    bool in_syn_sent();
 
+  public:
+    
     /**
-     * @brief 判断是否处于SYN_SENT状态
-     */
-    bool in_syn_sent() ;
-
-    /**
-     * @brief 判断是否处于SYN_RECV状态
-     */
-    bool in_syn_recv() ;
-
-    /**
-     * @brief 通过发送SYN段发起连接
+     * @brief 发起连接
      */
     void connect();
 

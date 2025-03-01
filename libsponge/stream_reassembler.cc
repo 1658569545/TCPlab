@@ -75,6 +75,7 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
         elm.data.assign(data.begin()+offset,data.end());
         
         elm.begin=_head_index;
+        elm.length=elm.data.size();
     }
     // 整个数据段完全落在了后面
     else if(index>=_head_index + _capacity){
@@ -84,14 +85,16 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     else if(index < (_head_index+_capacity) && (index+data.size())>(_head_index+_capacity)){
         elm.begin=index;
         elm.data=data.substr(0,(_head_index+_capacity-index));
+        elm.length=elm.data.size();
     }
     // 完全落在重组器中间
     else {
         elm.begin=index;
         elm.data=data;
+        elm.length=elm.data.size();
     }
 
-    elm.length=elm.data.size();
+    
     
     // 未处理数目增加
     _unassembled_byte+=elm.length;
@@ -149,6 +152,88 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
 
     
 }
+
+/*
+void StreamReassembler::push_substring(const string &data, const size_t index, const bool eof) {
+    if(_head_index +_capacity <= index){
+        return ;
+    }
+    node elm;
+
+    // 整个在前面
+    if(index + data.length() <=_head_index){
+        if(eof){
+            eof_flag=true;
+        }
+        if(eof_flag && empty()){
+            _output.end_input();
+        }
+        return ;
+    }
+    // 部分在前面，因此要截取
+    else if(index < _head_index){
+        size_t offset = _head_index-index;
+        elm.data.assign(data.begin()+offset,data.end());
+        elm.begin = index+offset;
+        elm.length=elm.data.length();
+    }
+    //  落在中间、部分落在后面、完全落在后面
+    else{
+        elm.begin=index;
+        elm.data=data;
+        elm.length=data.length();
+    }
+
+    _unassembled_byte+=elm.length;
+
+    do{
+        long merged_bytes=0;
+        auto iter=reabuffer.lower_bound(elm);
+        
+        // 先和后面合并到elm中
+        while(iter!=reabuffer.end() && (merged_bytes=splice_node(elm,*iter))>=0){
+            _unassembled_byte -= merged_bytes;
+            reabuffer.erase(iter);
+            iter=reabuffer.lower_bound(elm);
+        }
+        
+        if(iter==reabuffer.begin()){
+            break;
+        }
+        
+        // 和前面进行合并，并合并到elm中
+        iter--;
+        while((merged_bytes=splice_node(elm,*iter))>=0){
+            _unassembled_byte-=merged_bytes;
+            reabuffer.erase(iter);
+            iter=reabuffer.lower_bound(elm);
+            if(iter==reabuffer.begin()){
+                break;
+            }
+            iter--;
+        }
+    }while(false);
+
+    // 此时，开始插入
+    reabuffer.insert(elm);
+
+    // 如果有拼接好的，就直接写入缓冲区中，很明显，set中最小的段，如果其begin==_head_index，则代表可以放入了
+    if(!reabuffer.empty() && reabuffer.begin()->begin == _head_index){
+        const node head_node = *reabuffer.begin();
+        size_t write_size = _output.write(head_node.data);
+        _head_index+=write_size;
+        _unassembled_byte-=write_size;
+        reabuffer.erase(reabuffer.begin());
+    }
+    if (eof) {
+        eof_flag = true;
+    }
+    if (eof_flag && empty()) {
+        _output.end_input();
+    }
+}
+*/
+
 
 size_t StreamReassembler::unassembled_bytes() const {
     return _unassembled_byte;

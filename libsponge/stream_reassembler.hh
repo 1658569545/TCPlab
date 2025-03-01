@@ -7,6 +7,7 @@
 #include <string>
 #include <bits/stdc++.h>
 #include <set>
+#include <vector>
 // 一个类，它将字节流中的一系列摘录（可能是无序的，也可能是重叠的）组装成有序的字节流。
 class StreamReassembler {
   private:
@@ -30,8 +31,6 @@ class StreamReassembler {
         return begin<t.begin;
       }
     };
-
-    
 
     /// @brief 未装配的字节数
     size_t _unassembled_byte = 0;
@@ -58,6 +57,7 @@ class StreamReassembler {
      * @return 返回两个数据段重叠的字节数，用来在后续判断是否合并
      */
     long splice_node(node &eml1,const node &eml2);
+
   public:
 
     /**

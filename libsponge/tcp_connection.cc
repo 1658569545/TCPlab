@@ -192,6 +192,7 @@ bool TCPConnection::push_segments_out(bool send_syn){
             seg.header().win=_receiver.window_size();
         }
         if(_need_send_rst){
+            _need_send_rst=false;
             seg.header().rst=true;
         }
         _segments_out.push(seg);

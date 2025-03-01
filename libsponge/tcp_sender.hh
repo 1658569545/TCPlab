@@ -31,7 +31,7 @@ class TCPSender {
     uint64_t _next_seqno{0};
 
     /// @brief 已经接收的最大确认序列号（绝对）
-    uint64_t recv_seqno=0;
+    uint64_t recv_ackno=0;
 
     /// @brief SYN标志
     bool syn_flag=false;
@@ -152,8 +152,22 @@ class TCPSender {
     WrappingInt32 next_seqno() const { 
       return wrap(_next_seqno, _isn); 
     }
-
     
+    /**
+     * @brief 获取syn_flag标志
+     * @attention lab4使用
+     */
+    bool _syn_send() const{
+      return syn_flag;
+    }
+
+    /**
+     * @brief 获取fin_flag标志
+     * @attention lab4使用
+     */
+    bool _fin_send() const{
+      return fin_flag;
+    }
 };
 
 #endif  // SPONGE_LIBSPONGE_TCP_SENDER_HH

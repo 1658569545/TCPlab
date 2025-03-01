@@ -56,3 +56,24 @@ uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
 
     return res;
 }
+
+
+
+/*
+uint64_t unwrap(WrappingInt32 n, WrappingInt32 isn, uint64_t checkpoint) {
+    // 计算偏移
+    uint32_t offset = n.raw_value() - isn.raw_value();
+    // 初步得到绝对序列号
+    uint64_t t = (checkpoint & 0xFFFFFFFF00000000) + offset;
+    uint64_t ret = t;
+
+    // 检查是否向上溢出
+    if (abs(int64_t(t + (1ul << 32) - checkpoint)) < abs(int64_t(t - checkpoint)))
+        ret = t + (1ul << 32);
+    
+    // 检查是否向下溢出
+    if (t >= (1ul << 32) && abs(int64_t(t - (1ul << 32) - checkpoint)) < abs(int64_t(ret - checkpoint)))
+        ret = t - (1ul << 32);
+    return ret;
+}
+*/
