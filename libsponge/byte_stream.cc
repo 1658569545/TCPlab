@@ -31,10 +31,18 @@ size_t ByteStream::write(const string &data) {
     return len;
 }
 
-
 string ByteStream::peek_output(const size_t len) const {
     const size_t copy_len = std::min(len, _buffer.size());
+    /*
+    string str;
+    str = std::string(
+        std::make_move_iterator(_buffer.begin()),
+        std::make_move_iterator(_buffer.begin() + copy_len)
+    );
+    return str;
+    */
     return string(_buffer.begin(), _buffer.begin() + copy_len);
+    
 }
 
 void ByteStream::pop_output(const size_t len) { 
