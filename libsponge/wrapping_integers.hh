@@ -40,7 +40,7 @@ class WrappingInt32 {
 WrappingInt32 wrap(uint64_t n, WrappingInt32 isn);
 
 /**
- * @brief 将32位相对序列号（ISN）转换为64位绝对序列号（start at 0）
+ * @brief 将32位相对序列号（start at ISN）转换为64位绝对序列号（start at 0）
  * @param[in] n 相对序列号
  * @param[in] isn 初始序列号
  * @param[in] checkpoin 最近的64位绝对序列号

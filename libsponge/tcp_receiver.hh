@@ -55,7 +55,7 @@ class TCPReceiver {
     size_t window_size() const;
 
     /**
-     * @return 已存储但尚未重新组装的字节数
+     * @return 已到达但尚未重新组装的字节数
      */
     size_t unassembled_bytes() const { 
       return _reassembler.unassembled_bytes(); 

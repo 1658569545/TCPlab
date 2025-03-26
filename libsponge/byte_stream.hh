@@ -19,7 +19,15 @@ class ByteStream {
     // 已经写了的数据数目
     size_t _write_count=0;
     // 缓冲区
-    std::deque<char>_buffer={};
+     std::deque<char>_buffer={};
+    
+    // 使用循环队列作为缓冲区
+    //std::vector<char>_buffer={};
+    // 队头指针
+    //size_t _front=0;
+    // 数据量
+    //size_t _size=0;
+    
     // 是否已经到达末尾
     bool _input_ended_flag = false;
     // 指示流发生错误的标志。
@@ -71,6 +79,7 @@ class ByteStream {
      * @brief 读取数据
      * @param[in] len 要读取的长度
      * @return 返回读取的字符串
+     * @details 先调用peek_output进行复制，再调用pop_output进行删除
      */
     std::string read(const size_t len) {
         const auto ret = peek_output(len);

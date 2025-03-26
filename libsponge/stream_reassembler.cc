@@ -50,11 +50,6 @@ void StreamReassembler::push_substring(const string &data, const size_t index, c
     
     // 整体思路就类似于操作系统的空闲内存管理，需要判断是否和前后的空闲内存碎片进行合并
 
-    // 如果首索引+容积 <= data的第一个字节索引index，则代表无法再放入了，因为没有容积了
-    if(_head_index + _capacity <= index){
-        return ;
-    }
-
     node elm;
     
     // 整个数据段完全落在了前面

@@ -33,6 +33,9 @@ class TCPConnection {
      */
     bool push_segments_out(bool send_syn = false);
 
+
+    /// @brief 由于RST引起的连接中断
+    /// @param send_rst 是否需要发送RST段
     void unclean_shutdown(bool send_rst);
     bool clean_shutdown();
     bool in_syn_recv();

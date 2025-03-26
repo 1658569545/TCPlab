@@ -41,7 +41,7 @@ void TCPSender::fill_window(bool send_syn) {
     size_t remain;
     while(!fin_flag){
         // 空闲=窗口-已经发送的
-        // 已经发送的=要发送的-已经收到确认的
+        // 已经发送的=要发送的序列号-已经收到确认的序列号
         remain=win-(_next_seqno-recv_ackno);
         if(remain==0){
             break;
@@ -49,10 +49,10 @@ void TCPSender::fill_window(bool send_syn) {
         // 实际上的窗口空闲大小
         size_t size=min(TCPConfig::MAX_PAYLOAD_SIZE,remain);
         // 读取内容
-        std::stringstream ss;
-        ss<<_stream.read(size);
+        string str;
+        str=_stream.read(size);
         TCPSegment seg;
-        seg.payload()=Buffer(std::move(ss.str()));
+        seg.payload()=Buffer(std::move(str));
         // 到达了末尾，且还有空闲空间，则加一个fin标志，fin标志也会消耗一个序列
         if(_stream.eof() && seg.length_in_sequence_space()<win){
             seg.header().fin=true;

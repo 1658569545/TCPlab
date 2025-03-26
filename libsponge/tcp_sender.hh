@@ -103,7 +103,6 @@ class TCPSender {
 
     /**
      * @brief 生成空有效载荷段（用于创建空ACK段）
-     * @attention 无参版本
      */
     void send_empty_segment();
 
